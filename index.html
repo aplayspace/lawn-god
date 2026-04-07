@@ -508,11 +508,11 @@ function move(dir) {
   if(cell.type) { setMsg('Can\'t mow that!','bad'); return; }
 
   // snapshot for undo
-  history.push(JSON.stringify({mower:gs.mower, cells:gs.cells.map(c=>({...c})),
+  history.push(JSON.stringify({mower:{...gs.mower}, cells:gs.cells.map(c=>({...c})),
     moves:gs.moves, path:[...gs.path], overlapCount:gs.overlapCount}));
 
   const wasOverlap = cell.cut;
-  gs.mower = {x:nx, y:ny};
+  gs.mower = {x:nx, y:ny, dir:dir};
   gs.path.push({x:nx,y:ny});
   cell.cut = true;
   gs.moves++;
@@ -547,7 +547,7 @@ function move(dir) {
 }
 
 function placeStart(x,y) {
-  gs.mower = {x,y};
+  gs.mower = {x,y, dir:'up'};
   gs.path = [{x,y}];
   gs.placing = false;
   gs.hoverCell = null;
@@ -840,15 +840,29 @@ function drawBed(px,py) {
 }
 
 function drawMower(px,py) {
+  const dir = gs.mower.dir || 'up';
+  
+  ctx.save();
+  // Move to tile center
+  ctx.translate(px + TILE/2, py + TILE/2);
+  
+  // Rotate based on direction (Up is 0, Right is 90, Down is 180, Left is -90)
+  const angles = { up: 0, right: Math.PI/2, down: Math.PI, left: -Math.PI/2 };
+  ctx.rotate(angles[dir]);
+  
+  // Center drawing relative to 0,0 (the tile center)
+  const ox = -TILE/2;
+  const oy = -TILE/2;
+
   // Shadow for person and mower
   ctx.fillStyle='rgba(0,0,0,0.25)';
-  ctx.fillRect(px+10,py+10,TILE-10,TILE-10);
+  ctx.fillRect(ox+10,oy+10,TILE-10,TILE-10);
 
   // --- THE LAWNMOWER (Front) ---
-  const mX = px + TILE * 0.2;
-  const mY = py + TILE * 0.15;
+  const mX = ox + TILE * 0.2;
+  const mY = oy + TILE * 0.1; // Mower is at the "top" of the tile
   const mW = TILE * 0.6;
-  const mH = TILE * 0.4;
+  const mH = TILE * 0.35;
 
   // Mower Body
   ctx.fillStyle='#e87820';
@@ -858,15 +872,15 @@ function drawMower(px,py) {
 
   // Mower Wheels
   ctx.fillStyle='#1a1a1a';
-  [[0,0],[mW-8,0],[0,mH-8],[mW-8,mH-8]].forEach(([ox,oy])=>{
+  [[0,0],[mW-8,0],[0,mH-8],[mW-8,mH-8]].forEach(([ox_inner,oy_inner])=>{
     ctx.beginPath();
-    ctx.arc(mX+ox+4, mY+oy+4, TILE*0.06, 0, Math.PI*2);
+    ctx.arc(mX+ox_inner+4, mY+oy_inner+4, TILE*0.06, 0, Math.PI*2);
     ctx.fill();
   });
 
   // --- THE PERSON (Back) ---
-  const pX = px + TILE * 0.5;
-  const pY = py + TILE * 0.75;
+  const pX = ox + TILE * 0.5;
+  const pY = oy + TILE * 0.75;
   
   // Arms pushing handles
   ctx.strokeStyle='#f4d0a0'; // Skin tone
@@ -911,6 +925,8 @@ function drawMower(px,py) {
   ctx.beginPath();
   ctx.arc(pX, pY - TILE*0.25, TILE*0.12, Math.PI, 0);
   ctx.fill();
+  
+  ctx.restore();
 }
 
 // ── GAME LOOP (for flash animation) ────────────────────────────────
