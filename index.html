@@ -553,11 +553,11 @@ function placeStart(x,y) {
   gs.hoverCell = null;
   const c = getCell(x,y);
   c.cut = true;
-  gs.moves = 1;
+  gs.moves = 0;
   playMowSound();
   wrap.classList.remove('placing');
   wrap.classList.add('playing');
-  document.getElementById('h-moves').textContent = '1';
+  document.getElementById('h-moves').textContent = '0';
   document.getElementById('h-tiles').textContent = `1/${gs.mowable}`;
   setMsg('Mower placed! Use ↑ ↓ ← → or D-pad to mow. Z = undo.');
   render();
