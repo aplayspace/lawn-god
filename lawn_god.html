@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LAWN GOD</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green-dark:   #1a4a0a;
+    --green-mid:    #2d7a1a;
+    --green-grass:  #3d9e22;
+    --green-cut:    #8ecf5a;
+    --green-cut2:   #a8e070;
+    --yellow:       #f5d840;
+    --yellow-dark:  #c9a800;
+    --orange:       #e87820;
+    --red:          #d03020;
+    --sky:          #5bb8f5;
+    --sky-dark:     #1a6fa0;
+    --white:        #f4f0e0;
+    --brown:        #7a4a1a;
+    --brown-dark:   #4a2a08;
+    --panel-bg:     #0d2208;
+    --panel-border: #3d9e22;
+    --water:        #2888cc;
+    --water-light:  #5ab8f0;
+    --stripe-a:     #8ecf5a;
+    --stripe-b:     #9edd66;
+    --tile: 56px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; image-rendering: pixelated; }
+
+  body {
+    background: var(--green-dark);
+    font-family: 'Press Start 2P', monospace;
+    color: var(--white);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  /* ── SCANLINE OVERLAY ─────────────────────────── */
+  body::after {
+    content:'';
+    position:fixed; inset:0;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0.06) 0px,
+      rgba(0,0,0,0.06) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    pointer-events:none;
+    z-index:9999;
+  }
+
+  /* ── HEADER ───────────────────────────────────── */
+  header {
+    width: 100%;
+    background: var(--panel-bg);
+    border-bottom: 3px solid var(--green-mid);
+    padding: 10px 20px 8px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+  }
+
+  .logo {
+    font-size: 22px;
+    color: var(--yellow);
+    text-shadow: 3px 3px 0 var(--yellow-dark), 6px 6px 0 var(--brown-dark);
+    letter-spacing: 2px;
+    line-height: 1;
+  }
+  .logo span { color: var(--green-cut2); text-shadow: 3px 3px 0 #3a7a1a, 6px 6px 0 #1a3a08; }
+
+  .hud {
+    display: flex;
+    gap: 20px;
+    margin-left: auto;
+    align-items: center;
+  }
+  .hud-box {
+    background: #0a1a05;
+    border: 2px solid var(--green-mid);
+    padding: 5px 10px;
+    text-align: center;
+    min-width: 80px;
+  }
+  .hud-label { font-size: 7px; color: var(--green-cut); letter-spacing: 1px; margin-bottom: 4px; }
+  .hud-val   { font-size: 13px; color: var(--yellow); font-family: 'VT323', monospace; font-size: 20px; line-height: 1; }
+  .hud-val.money { color: #50e878; }
+  .hud-val.moves { color: var(--sky); }
+  .hud-val.par   { color: var(--orange); }
+
+  /* ── MAIN LAYOUT ──────────────────────────────── */
+  main {
+    display: flex;
+    gap: 0;
+    padding: 0;
+    align-items: flex-start;
+    width: 100%;
+    max-width: 900px;
+    margin-top: 16px;
+  }
+
+  /* ── SIDE PANEL ───────────────────────────────── */
+  .side-panel {
+    background: var(--panel-bg);
+    border: 2px solid var(--panel-border);
+    width: 190px;
+    flex-shrink: 0;
+    padding: 14px 12px;
+    margin-right: 16px;
+  }
+  .side-panel h3 {
+    font-size: 8px;
+    color: var(--green-cut);
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--green-mid);
+    padding-bottom: 6px;
+  }
+  .level-list { list-style: none; }
+  .level-list li {
+    font-family: 'VT323', monospace;
+    font-size: 16px;
+    padding: 4px 6px;
+    cursor: pointer;
+    color: var(--white);
+    border-left: 3px solid transparent;
+    transition: all 0.1s;
+    opacity: 0.6;
+  }
+  .level-list li:hover { opacity: 1; background: rgba(61,158,34,0.15); }
+  .level-list li.active { border-left-color: var(--yellow); color: var(--yellow); opacity: 1; }
+  .level-list li.completed { color: var(--green-cut2); opacity: 0.85; }
+  .level-list li.completed::after { content: ' ✓'; font-size: 12px; }
+
+  .legend { margin-top: 16px; }
+  .legend h3 { font-size: 8px; color: var(--green-cut); letter-spacing: 1px; margin-bottom: 8px; border-bottom: 1px solid var(--green-mid); padding-bottom: 6px; }
+  .legend-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; font-family:'VT323',monospace; font-size:15px; }
+  .legend-tile { width:18px; height:18px; border:1px solid rgba(255,255,255,0.2); flex-shrink:0; }
+
+  /* ── GAME AREA ────────────────────────────────── */
+  .game-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .level-banner {
+    background: var(--panel-bg);
+    border: 2px solid var(--panel-border);
+    padding: 8px 16px;
+    font-size: 8px;
+    color: var(--green-cut2);
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    width: 100%;
+    text-align: center;
+  }
+  .level-banner strong { color: var(--yellow); }
+
+  #game-wrap {
+    position: relative;
+    border: 3px solid var(--green-mid);
+    box-shadow: 0 0 0 2px var(--green-dark), 0 0 0 5px var(--panel-border),
+                8px 8px 0 var(--brown-dark);
+    background: var(--green-dark);
+    outline: none;
+  }
+  #game-wrap:focus { border-color: var(--yellow); }
+  #game-wrap.placing { cursor: crosshair; border-color: var(--yellow); }
+  #game-wrap.playing { cursor: default; }
+
+  canvas#game-canvas { display: block; }
+
+  /* ── MESSAGE BAR ──────────────────────────────── */
+  #msg-bar {
+    background: var(--panel-bg);
+    border: 2px solid var(--panel-border);
+    padding: 8px 14px;
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    min-height: 40px;
+    width: 100%;
+    margin-top: 10px;
+    text-align: center;
+    color: var(--green-cut2);
+    transition: color 0.2s;
+  }
+  #msg-bar.good  { color: #50e878; border-color: #50e878; }
+  #msg-bar.bad   { color: var(--red); border-color: var(--red); }
+  #msg-bar.score { color: var(--yellow); border-color: var(--yellow); }
+
+  /* ── CONTROLS ─────────────────────────────────── */
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+  .btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    padding: 8px 14px;
+    background: var(--panel-bg);
+    border: 2px solid var(--green-mid);
+    color: var(--white);
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.1s;
+    text-transform: uppercase;
+  }
+  .btn:hover { background: var(--green-dark); border-color: var(--yellow); color: var(--yellow); }
+  .btn:active { transform: translate(2px,2px); }
+  .btn.primary { border-color: var(--yellow); color: var(--yellow); }
+  .btn.primary:hover { background: #1a1a00; }
+
+  /* ── DPAD ─────────────────────────────────────── */
+  .dpad-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 10px;
+    gap: 4px;
+  }
+  .dpad-row { display: flex; gap: 4px; }
+  .dpad-btn {
+    width: 38px; height: 38px;
+    background: var(--panel-bg);
+    border: 2px solid var(--green-mid);
+    color: var(--green-cut);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none;
+  }
+  .dpad-btn:hover { background: var(--green-dark); color: var(--yellow); border-color: var(--yellow); }
+  .dpad-btn:active { transform: scale(0.9); }
+
+  /* ── SCORE POPUP ──────────────────────────────── */
+  #score-popup {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  #score-popup.show { display: flex; }
+  .score-card {
+    background: var(--panel-bg);
+    border: 4px solid var(--yellow);
+    padding: 30px 40px;
+    text-align: center;
+    box-shadow: 10px 10px 0 var(--brown-dark);
+    max-width: 420px;
+    width: 90%;
+  }
+  .score-card h2 { font-size: 18px; color: var(--yellow); margin-bottom: 20px; letter-spacing: 2px; }
+  .score-row { display: flex; justify-content: space-between; font-family: 'VT323', monospace; font-size: 22px; margin: 8px 0; border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 6px; }
+  .score-row .label { color: var(--green-cut); }
+  .score-row .val { color: var(--yellow); }
+  .score-row.total .val { color: #50e878; font-size: 28px; }
+  .score-row.penalty .val { color: var(--red); }
+  .score-grade { font-size: 28px; margin: 16px 0 12px; letter-spacing: 4px; }
+  .score-actions { display: flex; gap: 12px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">LAWN<span>GOD</span></div>
+  <div class="hud">
+    <div class="hud-box">
+      <div class="hud-label">BALANCE</div>
+      <div class="hud-val money" id="h-money">$0.00</div>
+    </div>
+    <div class="hud-box">
+      <div class="hud-label">MOVES</div>
+      <div class="hud-val moves" id="h-moves">0</div>
+    </div>
+    <div class="hud-box">
+      <div class="hud-label">PAR</div>
+      <div class="hud-val par" id="h-par">–</div>
+    </div>
+    <div class="hud-box">
+      <div class="hud-label">TILES</div>
+      <div class="hud-val" id="h-tiles">0/0</div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="side-panel">
+    <h3>⛳ LEVELS</h3>
+    <ul class="level-list" id="level-list"></ul>
+    <div class="legend">
+      <h3>🗺 LEGEND</h3>
+      <div class="legend-row"><div class="legend-tile" style="background:#3d9e22"></div>Uncut grass</div>
+      <div class="legend-row"><div class="legend-tile" style="background:#8ecf5a"></div>Mowed!</div>
+      <div class="legend-row"><div class="legend-tile" style="background:#f5d840"></div>You (mower)</div>
+      <div class="legend-row"><div class="legend-tile" style="background:#2888cc"></div>Water / pond</div>
+      <div class="legend-row"><div class="legend-tile" style="background:#7a4a1a"></div>Flower bed</div>
+      <div class="legend-row"><div class="legend-tile" style="background:#d03020"></div>Overlap! (-$)</div>
+    </div>
+    <div class="dpad-wrap" id="dpad">
+      <div class="dpad-row"><div class="dpad-btn" data-dir="up">▲</div></div>
+      <div class="dpad-row">
+        <div class="dpad-btn" data-dir="left">◀</div>
+        <div class="dpad-btn" style="visibility:hidden"></div>
+        <div class="dpad-btn" data-dir="right">▶</div>
+      </div>
+      <div class="dpad-row"><div class="dpad-btn" data-dir="down">▼</div></div>
+    </div>
+  </div>
+
+  <div class="game-col">
+    <div class="level-banner" id="level-banner">Use cursor keys to mow. Complete all tiles!</div>
+    <div id="game-wrap" tabindex="0">
+      <canvas id="game-canvas"></canvas>
+    </div>
+    <div id="msg-bar">Click the game area then use ↑ ↓ ← → to start mowing!</div>
+    <div class="controls">
+      <button class="btn" onclick="undoMove()">⟲ UNDO</button>
+      <button class="btn" onclick="resetLevel()">↺ RESET</button>
+      <button class="btn" onclick="showHint()">? HINT</button>
+      <button class="btn primary" onclick="nextLevel()">NEXT ▸</button>
+    </div>
+  </div>
+</main>
+
+<!-- SCORE POPUP -->
+<div id="score-popup">
+  <div class="score-card">
+    <h2 id="sc-title">JOB COMPLETE!</h2>
+    <div class="score-grade" id="sc-grade"></div>
+    <div class="score-row"><span class="label">CONTRACT FEE</span><span class="val" id="sc-fee"></span></div>
+    <div class="score-row"><span class="label">PAR BONUS</span><span class="val" id="sc-par"></span></div>
+    <div class="score-row"><span class="label">TIP</span><span class="val" id="sc-tip"></span></div>
+    <div class="score-row penalty"><span class="label">FUEL PENALTY</span><span class="val" id="sc-fuel"></span></div>
+    <div class="score-row penalty"><span class="label">OVERLAP FINES</span><span class="val" id="sc-overlap"></span></div>
+    <div class="score-row total"><span class="label">YOU EARNED</span><span class="val" id="sc-total"></span></div>
+    <div class="score-actions">
+      <button class="btn" onclick="closeScore();resetLevel()">↺ RETRY</button>
+      <button class="btn primary" onclick="closeScore();nextLevel()">NEXT JOB ▸</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── LEVEL DATA ─────────────────────────────────────────────────────
+// Obstacle types: 'water', 'bed' (flower bed/hedge)
+// par = minimum moves for full coverage (Hamiltonian path on grid graph)
+const LEVELS = [
+  { name:'Starter yard',    w:4, h:3, obs:[], par:11, fee:10, tip:6,
+    desc:'A simple 4×3 patch. Cover every tile!' },
+  { name:'Wide strip',      w:6, h:2, obs:[], par:11, fee:10, tip:5,
+    desc:'Long and thin – stripe mowing is your friend.' },
+  { name:'L-shaped lot',    w:5, h:4, obs:[{x:4,y:0},{x:4,y:1}], par:15, fee:12, tip:8,
+    desc:'L-shape. Pick your start corner carefully.' },
+  { name:'Square plot',     w:5, h:5, obs:[], par:24, fee:15, tip:10,
+    desc:'A proper square garden. Spirals or stripes?' },
+  { name:'Corner beds',     w:5, h:4, obs:[{x:0,y:0,t:'bed'},{x:4,y:0,t:'bed'},{x:0,y:3,t:'bed'},{x:4,y:3,t:'bed'}], par:14, fee:14, tip:10,
+    desc:'Ornamental beds in the corners – route around them.' },
+  { name:'Pond job',        w:5, h:5, obs:[{x:2,y:2,t:'water'}], par:23, fee:16, tip:12,
+    desc:'Watch out for the pond! Can\'t mow water.' },
+  { name:'Twin ponds',      w:6, h:4, obs:[{x:1,y:1,t:'water'},{x:4,y:2,t:'water'}], par:19, fee:18, tip:12,
+    desc:'Two ponds make things tricky. Plan your route.' },
+  { name:'U-shape',         w:5, h:4, obs:[{x:1,y:0},{x:2,y:0},{x:3,y:0},{x:1,y:1},{x:3,y:1}], par:10, fee:16, tip:10,
+    desc:'U-shaped courtyard. The inner corners are the key.' },
+  { name:'Central island',  w:6, h:5, obs:[{x:2,y:1,t:'bed'},{x:3,y:1,t:'bed'},{x:2,y:3,t:'bed'},{x:3,y:3,t:'bed'},{x:2,y:2,t:'water'},{x:3,y:2,t:'water'}], par:22, fee:20, tip:15,
+    desc:'Island feature in the centre. Route the perimeter first?' },
+  { name:'Zigzag strip',    w:7, h:3, obs:[{x:1,y:0},{x:3,y:0},{x:5,y:0},{x:2,y:2},{x:4,y:2}], par:14, fee:18, tip:14,
+    desc:'Staggered obstacles. No clean stripes this time.' },
+  { name:'Estate garden',   w:6, h:6, obs:[{x:2,y:2,t:'water'},{x:3,y:2,t:'water'},{x:2,y:3,t:'water'},{x:3,y:3,t:'water'}], par:31, fee:25, tip:18,
+    desc:'A grand 6×6 with central pond. Stay focused!' },
+  { name:'Diagonal path',   w:6, h:5, obs:[{x:0,y:4},{x:1,y:3},{x:2,y:2},{x:3,y:1},{x:4,y:0}], par:22, fee:22, tip:16,
+    desc:'Diagonal obstacle strip. Euler would approve.' },
+  { name:'Four corners',    w:6, h:6, obs:[{x:0,y:0,t:'bed'},{x:5,y:0,t:'bed'},{x:0,y:5,t:'bed'},{x:5,y:5,t:'bed'},{x:2,y:2,t:'water'},{x:3,y:3,t:'water'}], par:29, fee:28, tip:20,
+    desc:'Symmetrical obstacles. The hardest start position matters most.' },
+  { name:'Corridor',        w:7, h:5, obs:[{x:2,y:1},{x:2,y:2},{x:2,y:3},{x:4,y:1},{x:4,y:2},{x:4,y:3}], par:23, fee:26, tip:18,
+    desc:'Two walls create a corridor. Which direction do you enter?' },
+  { name:'Checkerboard',    w:5, h:5, obs:[{x:1,y:0,t:'bed'},{x:3,y:0,t:'bed'},{x:0,y:1,t:'bed'},{x:2,y:1,t:'bed'},{x:4,y:1,t:'bed'},{x:1,y:2,t:'bed'},{x:3,y:2,t:'bed'},{x:0,y:3,t:'bed'},{x:2,y:3,t:'bed'},{x:4,y:3,t:'bed'},{x:1,y:4,t:'bed'},{x:3,y:4,t:'bed'}], par:12, fee:20, tip:15,
+    desc:'Sparse checkerboard. Fewer tiles but every move counts.' },
+  { name:'S-curve',         w:7, h:4, obs:[{x:0,y:0},{x:1,y:0},{x:0,y:1},{x:5,y:2},{x:6,y:2},{x:6,y:3},{x:5,y:3}], par:19, fee:24, tip:18,
+    desc:'S-shaped mowing path. The shape hints at the solution.' },
+  { name:'Ring road',       w:6, h:6, obs:[{x:1,y:1},{x:2,y:1},{x:3,y:1},{x:4,y:1},{x:1,y:2,t:'water'},{x:4,y:2,t:'water'},{x:1,y:3,t:'water'},{x:4,y:3,t:'water'},{x:1,y:4},{x:2,y:4},{x:3,y:4},{x:4,y:4}], par:19, fee:30, tip:22,
+    desc:'Mow the perimeter ring only. Classic Eulerian circuit.' },
+  { name:'Notched square',  w:6, h:6, obs:[{x:2,y:0},{x:3,y:0},{x:0,y:2},{x:0,y:3},{x:5,y:2},{x:5,y:3},{x:2,y:5},{x:3,y:5}], par:27, fee:28, tip:20,
+    desc:'Notches on all four sides. Where do odd vertices land?' },
+  { name:'The maze',        w:7, h:5, obs:[{x:1,y:0},{x:3,y:0},{x:5,y:0},{x:1,y:2},{x:3,y:2},{x:5,y:2},{x:1,y:4},{x:3,y:4},{x:5,y:4}], par:26, fee:32, tip:25,
+    desc:'Grid of posts. Optimal route needs careful thought.' },
+  { name:'Grand estate',    w:8, h:6, obs:[{x:3,y:2,t:'water'},{x:4,y:2,t:'water'},{x:3,y:3,t:'water'},{x:4,y:3,t:'water'},{x:0,y:0,t:'bed'},{x:7,y:0,t:'bed'},{x:0,y:5,t:'bed'},{x:7,y:5,t:'bed'}], par:39, fee:40, tip:30,
+    desc:'The big one. Prove you are the Lawn God.' },
+];
+
+// ── CONSTANTS ──────────────────────────────────────────────────────
+const TILE = 56;
+const STRIPE_W = 8; // stripe width in pixels
+
+// ── STATE ──────────────────────────────────────────────────────────
+let currentLevel = 0;
+let money = 0;
+let completedLevels = new Set();
+let gs = null; // game state
+let history = [];
+let overlaps = 0;
+let frameId = null;
+
+// ── CANVAS ─────────────────────────────────────────────────────────
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('game-wrap');
+
+// ── LEVEL INIT ─────────────────────────────────────────────────────
+function buildLevelList() {
+  const ul = document.getElementById('level-list');
+  ul.innerHTML = '';
+  LEVELS.forEach((L, i) => {
+    const li = document.createElement('li');
+    li.textContent = (i+1).toString().padStart(2,'0')+'. '+L.name;
+    li.dataset.i = i;
+    if(completedLevels.has(i)) li.classList.add('completed');
+    if(i===currentLevel) li.classList.add('active');
+    li.addEventListener('click', ()=>{ currentLevel=i; initLevel(); });
+    ul.appendChild(li);
+  });
+}
+
+function initLevel() {
+  const L = LEVELS[currentLevel];
+  const obsSet = {};
+  (L.obs||[]).forEach(o => { obsSet[`${o.x},${o.y}`] = o.t||'block'; });
+
+  const cells = [];
+  let mowable = 0;
+  for(let y=0;y<L.h;y++) {
+    for(let x=0;x<L.w;x++) {
+      const t = obsSet[`${x},${y}`]||null;
+      cells.push({ x, y, type: t, cut: false });
+      if(!t) mowable++;
+    }
+  }
+
+  gs = {
+    L, cols: L.w, rows: L.h,
+    cells, mowable,
+    mower: null,
+    path: [],
+    moves: 0,
+    done: false,
+    overlapCount: 0,
+    overlapFlash: null,
+    hoverCell: null,
+    placing: true,  // waiting for start placement click
+  };
+  history = [];
+  overlaps = 0;
+
+  canvas.width  = L.w * TILE;
+  canvas.height = L.h * TILE;
+
+  document.getElementById('h-par').textContent = L.par;
+  document.getElementById('h-moves').textContent = '0';
+  document.getElementById('h-tiles').textContent = `0/${mowable}`;
+  document.getElementById('h-money').textContent = '$'+money.toFixed(2);
+  document.getElementById('level-banner').innerHTML =
+    `<strong>LEVEL ${currentLevel+1}:</strong> ${L.name} &nbsp;|&nbsp; ${L.desc}`;
+
+  setMsg('👆 Click any grass tile to place your mower and start!');
+  wrap.classList.add('placing');
+  wrap.classList.remove('playing');
+
+  buildLevelList();
+  render();
+  wrap.focus();
+}
+
+// ── CELL ACCESS ────────────────────────────────────────────────────
+function getCell(x,y) {
+  if(x<0||y<0||x>=gs.cols||y>=gs.rows) return null;
+  return gs.cells[y*gs.cols+x];
+}
+
+// ── MOVEMENT ───────────────────────────────────────────────────────
+const DIRS = { up:{dx:0,dy:-1}, down:{dx:0,dy:1}, left:{dx:-1,dy:0}, right:{dx:1,dy:0} };
+
+function move(dir) {
+  if(gs.done) return;
+  if(gs.placing) { setMsg('👆 Click a grass tile first to place your mower!','bad'); return; }
+  const {dx,dy} = DIRS[dir];
+
+  const nx = gs.mower.x + dx;
+  const ny = gs.mower.y + dy;
+  const cell = getCell(nx,ny);
+  if(!cell) { setMsg('Edge of yard!','bad'); return; }
+  if(cell.type) { setMsg('Can\'t mow that!','bad'); return; }
+
+  // snapshot for undo
+  history.push(JSON.stringify({mower:gs.mower, cells:gs.cells.map(c=>({...c})),
+    moves:gs.moves, path:[...gs.path], overlapCount:gs.overlapCount}));
+
+  const wasOverlap = cell.cut;
+  gs.mower = {x:nx, y:ny};
+  gs.path.push({x:nx,y:ny});
+  cell.cut = true;
+  gs.moves++;
+
+  if(wasOverlap) {
+    gs.overlapCount++;
+    gs.overlapFlash = {x:nx,y:ny,timer:18};
+    money = Math.max(0, money - 0.5);
+    setMsg('Already cut! Fuel wasted. -$0.50','bad');
+  }
+
+  const cutCount = gs.cells.filter(c=>c.cut&&!c.type).length;
+  document.getElementById('h-moves').textContent = gs.moves;
+  document.getElementById('h-tiles').textContent = `${cutCount}/${gs.mowable}`;
+  document.getElementById('h-money').textContent = '$'+money.toFixed(2);
+
+  if(cutCount===gs.mowable) {
+    gs.done = true;
+    render();
+    setTimeout(showScore, 300);
+    return;
+  }
+
+  if(!wasOverlap) {
+    const rem = gs.mowable - cutCount;
+    setMsg(`${cutCount}/${gs.mowable} tiles cut — ${rem} to go!`);
+  }
+
+  render();
+}
+
+function placeStart(x,y) {
+  gs.mower = {x,y};
+  gs.path = [{x,y}];
+  gs.placing = false;
+  gs.hoverCell = null;
+  const c = getCell(x,y);
+  c.cut = true;
+  gs.moves = 1;
+  wrap.classList.remove('placing');
+  wrap.classList.add('playing');
+  document.getElementById('h-moves').textContent = '1';
+  document.getElementById('h-tiles').textContent = `1/${gs.mowable}`;
+  setMsg('Mower placed! Use ↑ ↓ ← → or D-pad to mow. Z = undo.');
+  render();
+}
+
+// ── UNDO ───────────────────────────────────────────────────────────
+function undoMove() {
+  if(!history.length) return;
+  const snap = JSON.parse(history.pop());
+  gs.mower = snap.mower;
+  gs.cells = snap.cells;
+  gs.moves = snap.moves;
+  gs.path  = snap.path;
+  gs.overlapCount = snap.overlapCount;
+  gs.overlapFlash = null;
+  gs.done = false;
+  const cutCount = gs.cells.filter(c=>c.cut&&!c.type).length;
+  document.getElementById('h-moves').textContent = gs.moves;
+  document.getElementById('h-tiles').textContent = `${cutCount}/${gs.mowable}`;
+  document.getElementById('h-money').textContent = '$'+money.toFixed(2);
+  setMsg('Move undone.');
+  render();
+}
+
+// ── SCORING ────────────────────────────────────────────────────────
+function showScore() {
+  const {L, moves, overlapCount} = gs;
+  const par = L.par;
+  const extra = Math.max(0, moves - par);
+  const fuelPenalty = extra * 0.4;
+  const overlapFine = overlapCount * 0.5;
+
+  let grade, gradeColor, parBonus, tip;
+  if(moves <= par) {
+    grade='PERFECT!'; gradeColor='#f5d840';
+    parBonus = L.fee * 0.5; tip = L.tip;
+  } else if(moves <= par+2) {
+    grade='GREAT!'; gradeColor='#50e878';
+    parBonus = L.fee * 0.25; tip = Math.round(L.tip * 0.6);
+  } else if(moves <= par+5) {
+    grade='GOOD'; gradeColor='#5bb8f5';
+    parBonus = 0; tip = Math.round(L.tip * 0.3);
+  } else {
+    grade='DONE'; gradeColor='#aaaaaa';
+    parBonus = 0; tip = 0;
+  }
+
+  const earned = L.fee + parBonus + tip - fuelPenalty - overlapFine;
+  money += Math.max(0, earned);
+  completedLevels.add(currentLevel);
+
+  document.getElementById('sc-grade').textContent = grade;
+  document.getElementById('sc-grade').style.color = gradeColor;
+  document.getElementById('sc-fee').textContent  = `+$${L.fee.toFixed(2)}`;
+  document.getElementById('sc-par').textContent  = parBonus>0 ? `+$${parBonus.toFixed(2)}` : '$0.00';
+  document.getElementById('sc-tip').textContent  = tip>0 ? `+$${tip.toFixed(2)}` : '$0.00';
+  document.getElementById('sc-fuel').textContent = fuelPenalty>0 ? `-$${fuelPenalty.toFixed(2)}` : '$0.00';
+  document.getElementById('sc-overlap').textContent = overlapFine>0 ? `-$${overlapFine.toFixed(2)}` : '$0.00';
+  document.getElementById('sc-total').textContent = `$${Math.max(0,earned).toFixed(2)}`;
+  document.getElementById('h-money').textContent = '$'+money.toFixed(2);
+
+  const title = moves<=par ? 'PERFECT ROUTE!' : 'JOB COMPLETE!';
+  document.getElementById('sc-title').textContent = title;
+  document.getElementById('score-popup').classList.add('show');
+  buildLevelList();
+}
+
+function closeScore() {
+  document.getElementById('score-popup').classList.remove('show');
+}
+
+// ── ACTIONS ────────────────────────────────────────────────────────
+function resetLevel() { initLevel(); }
+function nextLevel() {
+  if(currentLevel < LEVELS.length-1) { currentLevel++; initLevel(); }
+  else setMsg('You finished all 20 levels! You are the LAWN GOD!','score');
+}
+function showHint() {
+  const hints = [
+    'Count cells with an odd number of grass neighbours — those are forced start/end points.',
+    'For rectangles, a boustrophedon (back-and-forth stripe) is usually optimal.',
+    'If there are exactly 2 odd-degree nodes, your path must start at one and end at the other.',
+    'If there are 0 odd-degree nodes, you can start anywhere — it\'s an Euler circuit!',
+    'More than 2 odd-degree nodes means you\'ll need to backtrack somewhere.',
+    'Think of the grid as a graph. Each grass tile is a node; each adjacency is an edge.',
+    'Corner tiles usually have degree 2 — they\'re often good starting points.',
+    'Obstacles can create odd-degree nodes — look for tiles with only one grass neighbour.',
+  ];
+  setMsg(hints[Math.floor(Math.random()*hints.length)]);
+}
+
+function setMsg(txt, cls='') {
+  const el = document.getElementById('msg-bar');
+  el.textContent = txt;
+  el.className = cls;
+}
+
+// ── RENDERING ──────────────────────────────────────────────────────
+function render() {
+  if(!gs) return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const {cells, cols, rows, mower, path, L, overlapFlash} = gs;
+
+  // Draw cells
+  cells.forEach(cell => {
+    const px = cell.x*TILE, py = cell.y*TILE;
+
+    if(cell.type==='water') {
+      drawWater(px,py);
+    } else if(cell.type==='bed') {
+      drawBed(px,py);
+    } else if(cell.type) {
+      // generic obstacle
+      ctx.fillStyle='#3a2a10';
+      ctx.fillRect(px,py,TILE,TILE);
+    } else if(cell.cut) {
+      drawCutGrass(px,py,cell.x,cell.y);
+    } else {
+      drawGrass(px,py);
+    }
+
+    // grid lines
+    ctx.strokeStyle='rgba(0,0,0,0.15)';
+    ctx.lineWidth=0.5;
+    ctx.strokeRect(px,py,TILE,TILE);
+  });
+
+  // Overlap flash
+  if(overlapFlash && overlapFlash.timer>0) {
+    const op = overlapFlash.timer/18 * 0.5;
+    ctx.fillStyle=`rgba(200,40,20,${op})`;
+    ctx.fillRect(overlapFlash.x*TILE, overlapFlash.y*TILE, TILE,TILE);
+    overlapFlash.timer--;
+  }
+
+  // Draw path trail
+  if(path.length>1) {
+    ctx.save();
+    ctx.strokeStyle='rgba(255,240,80,0.45)';
+    ctx.lineWidth=3;
+    ctx.lineJoin='round';
+    ctx.lineCap='round';
+    ctx.setLineDash([5,4]);
+    ctx.beginPath();
+    path.forEach((p,i)=>{
+      const px=p.x*TILE+TILE/2, py=p.y*TILE+TILE/2;
+      i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Start marker
+  if(path.length>0) {
+    const s=path[0];
+    ctx.fillStyle='#f5d840';
+    ctx.strokeStyle='#a08000';
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.arc(s.x*TILE+TILE/2, s.y*TILE+TILE/2, 7,0,Math.PI*2);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#3a2a00';
+    ctx.font='bold 8px monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('S', s.x*TILE+TILE/2, s.y*TILE+TILE/2);
+  }
+
+  // Hover highlight during placement mode
+  if(gs.placing && gs.hoverCell) {
+    const hx = gs.hoverCell.x*TILE, hy = gs.hoverCell.y*TILE;
+    ctx.fillStyle='rgba(245,216,64,0.35)';
+    ctx.fillRect(hx,hy,TILE,TILE);
+    ctx.strokeStyle='#f5d840';
+    ctx.lineWidth=2;
+    ctx.strokeRect(hx+1,hy+1,TILE-2,TILE-2);
+    // ghost mower outline
+    ctx.strokeStyle='rgba(232,120,32,0.7)';
+    ctx.lineWidth=2;
+    ctx.strokeRect(hx+6,hy+6,TILE-12,TILE-12);
+  }
+
+  // Mower
+  if(mower) {
+    drawMower(mower.x*TILE, mower.y*TILE);
+  }
+}
+
+function drawGrass(px,py) {
+  // Base
+  ctx.fillStyle='#3d9e22';
+  ctx.fillRect(px,py,TILE,TILE);
+  // Grass texture dots
+  ctx.fillStyle='rgba(0,0,0,0.12)';
+  const seeds = [[8,10],[20,5],[35,14],[44,8],[12,30],[28,24],[40,36],[6,42],[18,46],[36,40],[48,22]];
+  seeds.forEach(([ox,oy])=>{
+    ctx.fillRect(px+ox,py+oy,2,4);
+    ctx.fillRect(px+ox+1,py+oy-2,1,3);
+  });
+  ctx.fillStyle='rgba(255,255,255,0.06)';
+  seeds.forEach(([ox,oy])=>ctx.fillRect(px+ox+3,py+oy+5,1,3));
+}
+
+function drawCutGrass(px,py,cx,cy) {
+  // Alternating stripes for mowing effect
+  const stripe = (cx+cy)%2===0;
+  ctx.fillStyle = stripe ? '#8ecf5a' : '#96d860';
+  ctx.fillRect(px,py,TILE,TILE);
+  // Stripe lines
+  ctx.fillStyle='rgba(255,255,255,0.12)';
+  for(let i=0;i<TILE;i+=10) {
+    ctx.fillRect(px+i, py, 5, TILE);
+  }
+  ctx.fillStyle='rgba(0,0,0,0.08)';
+  for(let i=5;i<TILE;i+=10) {
+    ctx.fillRect(px+i, py, 5, TILE);
+  }
+}
+
+function drawWater(px,py) {
+  ctx.fillStyle='#1a6fa0';
+  ctx.fillRect(px,py,TILE,TILE);
+  // Wave lines
+  ctx.strokeStyle='rgba(91,184,245,0.5)';
+  ctx.lineWidth=1.5;
+  ctx.lineCap='round';
+  for(let i=0;i<3;i++) {
+    const wy=py+12+i*14;
+    ctx.beginPath();
+    ctx.moveTo(px+4,wy);
+    ctx.bezierCurveTo(px+14,wy-4, px+24,wy+4, px+34,wy);
+    ctx.bezierCurveTo(px+44,wy-4, px+52,wy+2, px+TILE-4,wy);
+    ctx.stroke();
+  }
+  // Sparkle
+  ctx.fillStyle='rgba(180,230,255,0.6)';
+  [[10,8],[38,20],[22,38],[46,44]].forEach(([ox,oy])=>{
+    ctx.fillRect(px+ox,py+oy,2,2);
+  });
+}
+
+function drawBed(px,py) {
+  ctx.fillStyle='#4a2a08';
+  ctx.fillRect(px,py,TILE,TILE);
+  // Soil texture
+  ctx.fillStyle='rgba(255,200,100,0.15)';
+  [[6,8],[20,6],[35,10],[14,22],[30,20],[44,18],[8,34],[24,36],[40,32],[16,46],[38,44]].forEach(([ox,oy])=>{
+    ctx.fillRect(px+ox,py+oy,3,3);
+  });
+  // Flowers
+  const flowers = [[14,14,'#f040a0'],[38,14,'#f0c040'],[14,38,'#f0c040'],[38,38,'#f040a0'],[26,26,'#40c0f0']];
+  flowers.forEach(([ox,oy,col])=>{
+    ctx.fillStyle=col;
+    ctx.beginPath();
+    ctx.arc(px+ox,py+oy,4,0,Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle='#ffe080';
+    ctx.beginPath();
+    ctx.arc(px+ox,py+oy,2,0,Math.PI*2);
+    ctx.fill();
+  });
+}
+
+function drawMower(px,py) {
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.25)';
+  ctx.fillRect(px+10,py+10,TILE-10,TILE-10);
+
+  // Body
+  ctx.fillStyle='#e87820';
+  ctx.fillRect(px+6,py+6,TILE-12,TILE-12);
+
+  // Highlight
+  ctx.fillStyle='#f0a040';
+  ctx.fillRect(px+6,py+6,TILE-12,8);
+
+  // Handle bar
+  ctx.strokeStyle='#8a3808';
+  ctx.lineWidth=3;
+  ctx.beginPath();
+  ctx.moveTo(px+10,py+6);
+  ctx.lineTo(px+10,py+2);
+  ctx.lineTo(px+TILE-10,py+2);
+  ctx.lineTo(px+TILE-10,py+6);
+  ctx.stroke();
+
+  // Wheels
+  ctx.fillStyle='#1a1a1a';
+  [[6,TILE-12],[TILE-12,TILE-12],[6,8],[TILE-12,8]].forEach(([ox,oy])=>{
+    ctx.beginPath();
+    ctx.arc(px+ox+4,py+oy+4,5,0,Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle='#555';
+    ctx.beginPath();
+    ctx.arc(px+ox+4,py+oy+4,2,0,Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle='#1a1a1a';
+  });
+
+  // Blade indicator
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.beginPath();
+  ctx.arc(px+TILE/2,py+TILE/2,7,0,Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle='#aaa';
+  ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(px+TILE/2-6,py+TILE/2);
+  ctx.lineTo(px+TILE/2+6,py+TILE/2);
+  ctx.moveTo(px+TILE/2,py+TILE/2-6);
+  ctx.lineTo(px+TILE/2,py+TILE/2+6);
+  ctx.stroke();
+}
+
+// ── GAME LOOP (for flash animation) ────────────────────────────────
+function loop() {
+  if(gs && gs.overlapFlash && gs.overlapFlash.timer>0) render();
+  frameId = requestAnimationFrame(loop);
+}
+
+// ── INPUT ──────────────────────────────────────────────────────────
+wrap.addEventListener('keydown', e=>{
+  const map = {ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'};
+  if(map[e.key]) { e.preventDefault(); move(map[e.key]); }
+  if(e.key==='z'||e.key==='Z') undoMove();
+  if(e.key==='r'||e.key==='R') resetLevel();
+});
+
+function canvasCell(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const cx = Math.floor((clientX - rect.left) * scaleX / TILE);
+  const cy = Math.floor((clientY - rect.top)  * scaleY / TILE);
+  return getCell(cx, cy);
+}
+
+canvas.addEventListener('mousemove', e=>{
+  if(!gs || !gs.placing) return;
+  const cell = canvasCell(e);
+  gs.hoverCell = (cell && !cell.type) ? cell : null;
+  render();
+});
+
+canvas.addEventListener('mouseleave', ()=>{
+  if(gs) { gs.hoverCell = null; render(); }
+});
+
+canvas.addEventListener('click', e=>{
+  if(!gs || gs.done) return;
+  const cell = canvasCell(e);
+  if(!cell || cell.type) return;
+  if(gs.placing) {
+    placeStart(cell.x, cell.y);
+  }
+  wrap.focus();
+});
+
+// Touch support for mobile placement
+canvas.addEventListener('touchstart', e=>{
+  e.preventDefault();
+  if(!gs || gs.done) return;
+  const cell = canvasCell(e);
+  if(!cell || cell.type) return;
+  if(gs.placing) {
+    placeStart(cell.x, cell.y);
+  }
+  wrap.focus();
+}, {passive:false});
+
+document.querySelectorAll('.dpad-btn[data-dir]').forEach(btn=>{
+  btn.addEventListener('click', ()=>move(btn.dataset.dir));
+});
+
+// ── BOOT ───────────────────────────────────────────────────────────
+buildLevelList();
+initLevel();
+loop();
+</script>
+</body>
+</html>
