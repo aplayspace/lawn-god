@@ -105,7 +105,7 @@
     padding: 0;
     align-items: flex-start;
     width: 100%;
-    max-width: 900px;
+    max-width: 1100px;
     margin-top: 16px;
   }
 
@@ -406,7 +406,7 @@ const LEVELS = [
 ];
 
 // ── CONSTANTS ──────────────────────────────────────────────────────
-const TILE = 56;
+const TILE = 80;
 const STRIPE_W = 8; // stripe width in pixels
 
 // ── STATE ──────────────────────────────────────────────────────────
@@ -818,54 +818,77 @@ function drawBed(px,py) {
 }
 
 function drawMower(px,py) {
-  // Shadow
+  // Shadow for person and mower
   ctx.fillStyle='rgba(0,0,0,0.25)';
   ctx.fillRect(px+10,py+10,TILE-10,TILE-10);
 
-  // Body
+  // --- THE LAWNMOWER (Front) ---
+  const mX = px + TILE * 0.2;
+  const mY = py + TILE * 0.15;
+  const mW = TILE * 0.6;
+  const mH = TILE * 0.4;
+
+  // Mower Body
   ctx.fillStyle='#e87820';
-  ctx.fillRect(px+6,py+6,TILE-12,TILE-12);
-
-  // Highlight
+  ctx.fillRect(mX, mY, mW, mH);
   ctx.fillStyle='#f0a040';
-  ctx.fillRect(px+6,py+6,TILE-12,8);
+  ctx.fillRect(mX, mY, mW, mH * 0.4);
 
-  // Handle bar
-  ctx.strokeStyle='#8a3808';
-  ctx.lineWidth=3;
-  ctx.beginPath();
-  ctx.moveTo(px+10,py+6);
-  ctx.lineTo(px+10,py+2);
-  ctx.lineTo(px+TILE-10,py+2);
-  ctx.lineTo(px+TILE-10,py+6);
-  ctx.stroke();
-
-  // Wheels
+  // Mower Wheels
   ctx.fillStyle='#1a1a1a';
-  [[6,TILE-12],[TILE-12,TILE-12],[6,8],[TILE-12,8]].forEach(([ox,oy])=>{
+  [[0,0],[mW-8,0],[0,mH-8],[mW-8,mH-8]].forEach(([ox,oy])=>{
     ctx.beginPath();
-    ctx.arc(px+ox+4,py+oy+4,5,0,Math.PI*2);
+    ctx.arc(mX+ox+4, mY+oy+4, TILE*0.06, 0, Math.PI*2);
     ctx.fill();
-    ctx.fillStyle='#555';
-    ctx.beginPath();
-    ctx.arc(px+ox+4,py+oy+4,2,0,Math.PI*2);
-    ctx.fill();
-    ctx.fillStyle='#1a1a1a';
   });
 
-  // Blade indicator
-  ctx.fillStyle='rgba(255,255,255,0.5)';
+  // --- THE PERSON (Back) ---
+  const pX = px + TILE * 0.5;
+  const pY = py + TILE * 0.75;
+  
+  // Arms pushing handles
+  ctx.strokeStyle='#f4d0a0'; // Skin tone
+  ctx.lineWidth = TILE * 0.05;
   ctx.beginPath();
-  ctx.arc(px+TILE/2,py+TILE/2,7,0,Math.PI*2);
-  ctx.fill();
-  ctx.strokeStyle='#aaa';
-  ctx.lineWidth=1;
-  ctx.beginPath();
-  ctx.moveTo(px+TILE/2-6,py+TILE/2);
-  ctx.lineTo(px+TILE/2+6,py+TILE/2);
-  ctx.moveTo(px+TILE/2,py+TILE/2-6);
-  ctx.lineTo(px+TILE/2,py+TILE/2+6);
+  ctx.moveTo(pX - TILE*0.15, pY - TILE*0.1); // Left shoulder
+  ctx.lineTo(mX + TILE*0.1, mY + mH);        // Left handle
+  ctx.moveTo(pX + TILE*0.15, pY - TILE*0.1); // Right shoulder
+  ctx.lineTo(mX + mW - TILE*0.1, mY + mH);   // Right handle
   ctx.stroke();
+
+  // Handle bar
+  ctx.strokeStyle='#333';
+  ctx.lineWidth=2;
+  ctx.strokeRect(mX + TILE*0.05, mY + mH, mW - TILE*0.1, TILE*0.05);
+
+  // Body/Shirt
+  ctx.fillStyle='#3498db'; // Blue shirt
+  ctx.beginPath();
+  ctx.ellipse(pX, pY, TILE*0.2, TILE*0.15, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Head
+  ctx.fillStyle='#f4d0a0'; // Skin tone
+  ctx.beginPath();
+  ctx.arc(pX, pY - TILE*0.2, TILE*0.12, 0, Math.PI*2);
+  ctx.fill();
+
+  // Sunglasses
+  ctx.fillStyle='#000';
+  ctx.fillRect(pX - TILE*0.08, pY - TILE*0.23, TILE*0.16, TILE*0.04); // Lenses
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pX - TILE*0.12, pY - TILE*0.23);
+  ctx.lineTo(pX - TILE*0.08, pY - TILE*0.23);
+  ctx.moveTo(pX + TILE*0.08, pY - TILE*0.23);
+  ctx.lineTo(pX + TILE*0.12, pY - TILE*0.23);
+  ctx.stroke();
+
+  // Hair/Cap
+  ctx.fillStyle='#2c3e50';
+  ctx.beginPath();
+  ctx.arc(pX, pY - TILE*0.25, TILE*0.12, Math.PI, 0);
+  ctx.fill();
 }
 
 // ── GAME LOOP (for flash animation) ────────────────────────────────
