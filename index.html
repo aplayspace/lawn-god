@@ -517,6 +517,8 @@ function move(dir) {
   cell.cut = true;
   gs.moves++;
 
+  playMowSound(wasOverlap);
+
   if(wasOverlap) {
     gs.overlapCount++;
     gs.overlapFlash = {x:nx,y:ny,timer:18};
@@ -552,6 +554,7 @@ function placeStart(x,y) {
   const c = getCell(x,y);
   c.cut = true;
   gs.moves = 1;
+  playMowSound();
   wrap.classList.remove('placing');
   wrap.classList.add('playing');
   document.getElementById('h-moves').textContent = '1';
@@ -579,9 +582,28 @@ function undoMove() {
   render();
 }
 
+function playWinSound() {
+  initAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const notes = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
+  notes.forEach((freq, i) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.1);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime + i * 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.1 + 0.2);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(audioCtx.currentTime + i * 0.1);
+    osc.stop(audioCtx.currentTime + i * 0.1 + 0.2);
+  });
+}
+
 // ── SCORING ────────────────────────────────────────────────────────
 function showScore() {
   const {L, moves, overlapCount} = gs;
+  playWinSound();
   const par = L.par;
   const extra = Math.max(0, moves - par);
   const fuelPenalty = extra * 0.4;
@@ -952,6 +974,48 @@ canvas.addEventListener('touchstart', e=>{
 document.querySelectorAll('.dpad-btn[data-dir]').forEach(btn=>{
   btn.addEventListener('click', ()=>move(btn.dataset.dir));
 });
+
+// ── SOUNDS ─────────────────────────────────────────────────────────
+let audioCtx = null;
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+}
+
+function playMowSound(isOverlap = false) {
+  initAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.type = isOverlap ? 'sawtooth' : 'square';
+  osc.frequency.setValueAtTime(isOverlap ? 60 : 45, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(isOverlap ? 40 : 30, audioCtx.currentTime + 0.1);
+
+  gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.1);
+
+  // Add a second higher-pitched "blade" sound
+  const osc2 = audioCtx.createOscillator();
+  const gain2 = audioCtx.createGain();
+  osc2.type = 'triangle';
+  osc2.frequency.setValueAtTime(isOverlap ? 150 : 120, audioCtx.currentTime);
+  gain2.gain.setValueAtTime(0.05, audioCtx.currentTime);
+  gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+  osc2.connect(gain2);
+  gain2.connect(audioCtx.destination);
+  osc2.start();
+  osc2.stop(audioCtx.currentTime + 0.08);
+}
 
 // ── BOOT ───────────────────────────────────────────────────────────
 buildLevelList();
